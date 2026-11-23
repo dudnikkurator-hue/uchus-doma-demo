@@ -384,6 +384,25 @@ const resend = document.createElement('button');
 resend.type = 'button';
 resend.textContent = 'Отправить письмо повторно';
 accountForm.querySelector('.row').append(resend);
+const forgot = document.createElement('button');
+forgot.type = 'button';
+forgot.textContent = 'Сбросить пароль';
+accountForm.querySelector('.row').append(forgot);
+forgot.onclick = async () => {
+  const email = accountForm.elements.email;
+  if (!email.reportValidity()) return;
+  forgot.disabled = true;
+  try {
+    await cloudRequest('/auth/v1/recover?redirect_to=' + encodeURIComponent(confirmationRedirect), {
+      method:'POST',body:{email:email.value.trim()}
+    });
+    syncStatus.textContent = 'Если аккаунт существует, проверьте почту и откройте новое письмо о сбросе пароля.';
+  } catch {
+    syncStatus.textContent = 'Не удалось запросить письмо. Попробуйте позже.';
+  } finally {
+    forgot.disabled = false;
+  }
+};
 resend.onclick = async () => {
   const email = accountForm.elements.email;
   if (!email.reportValidity()) return;
@@ -521,5 +540,40 @@ signOut.onclick = async () => {
 window.addEventListener('online',() => syncProgress());
 home();
 setCloudSession(cloudSession);
-if (cloudSession) syncProgress(true);
+const callback = new URLSearchParams(location.hash.slice(1));
+const recoveryToken = callback.get('type') === 'recovery' ? callback.get('access_token') : null;
+if (callback.has('access_token') || callback.has('error_code')) {
+  history.replaceState(null,'',location.pathname + location.search);
+}
+if (recoveryToken) {
+  setCloudSession(null);
+  account.open = true;
+  accountForm.hidden = true;
+  const recoveryForm = document.createElement('form');
+  recoveryForm.innerHTML = '<label>Новый пароль <input type="password" name="password" autocomplete="new-password" minlength="8" required></label><button>Сохранить новый пароль</button>';
+  account.insertBefore(recoveryForm,syncStatus);
+  recoveryForm.onsubmit = async event => {
+    event.preventDefault();
+    const submit = recoveryForm.querySelector('button');
+    submit.disabled = true;
+    try {
+      await cloudRequest('/auth/v1/user',{method:'PUT',token:recoveryToken,body:{password:recoveryForm.elements.password.value}});
+      recoveryForm.reset();
+      recoveryForm.remove();
+      accountForm.hidden = false;
+      syncStatus.textContent = 'Пароль обновлён. Войдите с новым паролем.';
+    } catch {
+      recoveryForm.elements.password.value = '';
+      syncStatus.textContent = 'Не удалось изменить пароль. Проверьте требования к паролю или запросите новую ссылку.';
+      accountForm.hidden = false;
+    } finally {
+      submit.disabled = false;
+    }
+  };
+} else if (cloudSession) {
+  syncProgress(true);
+} else if (callback.has('error_code')) {
+  account.open = true;
+  syncStatus.textContent = 'Ссылка устарела или уже использована. Запросите новое письмо для сброса пароля.';
+}
 </script></html>
