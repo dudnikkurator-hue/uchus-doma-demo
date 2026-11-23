@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Учусь дома · 6 класс</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f7f7fb;color:#221b35;font:16px/1.55 Inter,system-ui,sans-serif}header,main{max-width:1050px;margin:auto;padding:24px}header{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}strong{font-weight:750}button,input{font:inherit}button{padding:11px 16px;background:#eee9fc;border:0;border-radius:13px;color:#35236a;cursor:pointer;font-weight:650}button:hover{background:#e0d5fb}button:focus-visible,input:focus-visible{outline:3px solid #8961ef;outline-offset:3px}.primary{background:#603ac8;color:white}.primary:hover{background:#4e2caa}.hero{background:#e9dfff;border-radius:30px;padding:clamp(24px,6vw,58px);margin-bottom:25px}.hero p{max-width:48ch}h1{font-size:clamp(32px,7vw,62px);line-height:1.05;letter-spacing:-.045em;margin:14px 0}h2,h3,p{margin:0 0 12px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.card,article{padding:22px;border:1px solid #e8e3f2;border-radius:22px;background:white}.card{display:flex;flex-direction:column;align-items:start}.card button{margin-top:auto}.icon{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:#ece5ff;margin-bottom:14px;font-weight:800}.card:nth-child(2) .icon{background:#ffe5e1}.card:nth-child(3) .icon{background:#dbf5e9}.muted{color:#625972}.row{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}.panel{margin:16px 0;padding:14px;background:#f4efff;border-radius:14px}input{width:min(100%,360px);display:block;padding:12px;border:1px solid #aca0c2;border-radius:10px}article{margin:12px 0;overflow-wrap:anywhere}small{display:block;color:#625972}@media(max-width:640px){header,main{padding:15px}.grid{grid-template-columns:1fr}.hero{border-radius:22px}.row button{flex:1 1 auto}}
+.study-progress{margin:14px 0 18px;width:100%;max-width:420px}.study-progress label{display:block;font-size:14px;font-weight:700;margin-bottom:5px}.study-progress progress{display:block;width:100%;height:14px;accent-color:#603ac8}
+</style>
+<style>
+dialog{width:min(440px,calc(100% - 30px));max-height:85vh;padding:22px;border:1px solid #e8e3f2;border-radius:22px;color:#221b35;background:white}dialog::backdrop{background:#221b3580}dialog button{margin-top:5px}
+.confetti{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:10}
+.confetti i{position:absolute;width:8px;height:11px;border-radius:2px;animation:confetti-pop 650ms ease-out both}
+@keyframes confetti-pop{0%{transform:translate(-50%,-50%) scale(.5);opacity:1}70%{opacity:1}100%{transform:translate(var(--x),var(--y)) rotate(var(--spin));opacity:0}}
+</style>
+<header><strong>✦ Учусь дома</strong><nav class="row" aria-label="Кабинеты"><button id="student">Ученица</button><button id="parent">Родитель</button></nav></header><main id="app"></main>
+<script>
+const courses = [
+  {name:'Математика', icon:'π', section:'Отношения и пропорции', lessons:[
+    {title:'Отношения', pages:'119–124', tasks:[
+      {label:'Задача 1 · с. 119', task:'Ученик решил 4 задачи из 5. Какую часть всех задач он решил?', answers:['4/5','4:5','0.8','80%'], hint:'Раздели количество решённых задач на общее количество.', explain:'4 ÷ 5 = 4/5 = 0,8 = 80 %.'},
+      {label:'Задача 2а · с. 119', task:'Площадь катка — 480 м². От снега расчистили 320 м². Какую часть катка расчистили? Введи дробь (например, 1/3) или округли процент до десятых.', answers:['2/3','2:3','320/480','320:480','0.66667','66.7%'], hint:'Раздели площадь расчищенной части на площадь всего катка. Для точного ответа запиши результат дробью.', explain:'320 ÷ 480 = 320/480 = 2/3, или примерно 66,7 %.'},
+      {label:'Задача 2б · с. 120', task:'Во сколько раз весь каток площадью 480 м² больше расчищенной части площадью 320 м²?', answers:['1.5','3/2','3:2','480/320','480:320','1 1/2'], hint:'Теперь на первом месте площадь всего катка.', explain:'480 ÷ 320 = 3/2 = 1,5. Это отношение обратно отношению из задачи 2а.'},
+      {label:'Задача 3 · с. 120', task:'Кошка весит 4,4 кг, а котёнок — 99 г. Какую часть массы кошки составляет масса котёнка?', answers:['9/400','9:400','99/4400','99:4400','0.0225','2.25%'], hint:'Сначала переведи массу кошки в граммы.', explain:'4,4 кг = 4400 г. Отношение равно 99/4400 = 9/400 = 0,0225 = 2,25 %.'},
+      {label:'Задача 4 · с. 120', task:'В лагере 105 детей. Число девочек относится к числу мальчиков как 3 : 4. Сколько девочек и сколько мальчиков? Запиши два числа через пробел: сначала девочек, потом мальчиков.', answers:['45 60','45;60','45:60'], hint:'Найди, сколько детей приходится на одну из семи равных частей.', explain:'3 + 4 = 7 частей, 105 ÷ 7 = 15 детей в одной части. Девочек 15 × 3 = 45, мальчиков 15 × 4 = 60.'}
+    ]},
+    {title:'Пропорция', pages:'125–129', example:'В пропорции 2 : 3 = 4 : 6 произведения крайних и средних членов равны: 2 × 6 = 3 × 4.', task:'Найди x, если 3 : 5 = x : 20.', answers:['12'], hint:'Знаменатель увеличился в четыре раза.', explain:'Умножь 3 на 4. Получится 12.'}
+  ]},
+  {name:'Русский язык', icon:'Аа', section:'Лексикология и фразеология', lessons:[
+    {title:'Слово и его лексическое значение', pages:'104–108', example:'В выражении «ключ от двери» ключ — предмет для замка. В выражении «бьёт ключ» это источник воды.', task:'Что означает «кисть» в сочетании «кисть винограда»? Ответь одним словом.', answers:['гроздь'], hint:'Подумай, как называют ягоды, растущие вместе на одной веточке.', explain:'Здесь «кисть» означает гроздь.'}
+  ]},
+  {name:'Английский язык', icon:'Aa', section:'Getting around', lessons:[
+    {title:'Road safety', pages:'26–27', example:'Cross at the zebra crossing. — Переходи дорогу по пешеходному переходу.', task:'Допиши слово: Look both ways before you ___ the road.', answers:['cross'], hint:'Нужен глагол «переходить».', explain:'Cross the road означает «переходить дорогу».'}
+  ]}
+];
+const practice = [[["В классе 20 учеников, 8 пришли пешком. Какую часть класса они составляют?","2/5|0.4|40%","Раздели 8 на 20.","8/20 = 2/5 = 40 %."],
+  ["Из 30 страниц прочитали 18. Какую часть книги прочитали?","3/5|0.6|60%","Составь отношение прочитанных страниц ко всем.","18/30 = 3/5 = 60 %."],
+  ["Первая лента длиной 2 м, вторая — 50 см. Во сколько раз первая длиннее второй?","4","Переведи метры в сантиметры.","2 м = 200 см. 200 ÷ 50 = 4.","Число без единиц."],
+  ["Красных и синих фишек вместе 36, их количества относятся как 1 : 3. Сколько фишек каждого цвета?","9 27|9;27","Сложи 1 и 3, затем найди размер одной доли.","36 ÷ 4 = 9. Красных 9, синих 27.","Два числа через пробел: красные, затем синие."],
+  ["В корзине 14 яблок и 21 груша. Запиши отношение яблок к грушам в сокращённом виде.","2:3|2/3","Найди общий делитель 14 и 21.","14 : 21 = 2 : 3 после деления на 7.","Два числа через двоеточие или дробь."]],
+  [["Найди x: 4 : 7 = x : 21.","12","Во сколько раз увеличилось число 7?","21 ÷ 7 = 3. Тогда x = 4 × 3 = 12."],
+  ["Найди x: x : 24 = 3 : 8.","9","Сравни 24 и 8.","24 ÷ 8 = 3. Тогда x = 3 × 3 = 9."],
+  ["Найди x: 18 : x = 6 : 5.","15","Во сколько раз 18 больше 6?","18 ÷ 6 = 3. Тогда x = 5 × 3 = 15."],
+  ["Найди x: 5 : 8 = 15 : x.","24","Найди множитель, который превращает 5 в 15.","15 ÷ 5 = 3. Тогда x = 8 × 3 = 24."],
+  ["Найди x: 7 : 10 = x : 15.","10.5|21/2","Приравняй произведения крайних и средних членов.","10x = 7 × 15 = 105. Поэтому x = 10,5."]],
+  [["В предложении «У горы крутой склон» замени слово «крутой» близким по смыслу словом.","обрывистый|резкий|отвесный","Слово описывает наклон склона.","Здесь «крутой» означает «с большим наклоном». Подходит «обрывистый»."],
+  ["В каком сочетании слово «золотой» употреблено в переносном значении: 1) золотое кольцо, 2) золотые руки?","2","В одном случае речь о металле, в другом — об умении.","В сочетании «золотые руки» так говорят об умелом человеке.","Введи номер варианта."],
+  ["Подбери антоним к слову «глубокий» в сочетании «глубокий ручей».","мелкий|неглубокий","Речь о расстоянии от поверхности воды до дна.","«Мелкий ручей» имеет небольшую глубину."],
+  ["В каком сочетании «острый» означает «жгучий на вкус»: 1) острый нож, 2) острый соус, 3) острый угол?","2","Выбери сочетание, которое описывает еду.","«Острый соус» имеет жгучий вкус.","Введи номер варианта."],
+  ["Как называется часть дерева, которая находится в земле и впитывает воду?","корень|корни","Вспомни слово, которое также обозначает главную часть слова.","Это корень. У слова «корень» есть и другие значения, например в языке и математике."]],
+  [["Вставь слово: Stop when the traffic light is ___.","red","Какого цвета сигнал «стой»?","Red — красный. На красный сигнал нужно остановиться."],
+  ["Вставь слово: Wear a ___ when you ride a bike.","helmet","Как называется предмет, защищающий голову?","Helmet — шлем. Wear a helmet — надень шлем."],
+  ["Вставь слово: Use the zebra ___ to cross the road.","crossing","Вспомни второе слово в названии пешеходного перехода.","Zebra crossing — пешеходный переход."],
+  ["Вставь слово: Look left and ___ before you cross.","right","В предложении перечислены два направления.","Left and right — налево и направо."],
+  ["Вставь слово: Fasten your seat ___ in the car.","belt","Вспомни английское название ремня безопасности.","Seat belt — ремень безопасности. Fasten — пристегни."]]];
+const practiceTheory = [
+  'Отношение — частное двух чисел. Для величин приведи единицы к одному виду. Чтобы разделить число в отношении, сначала найди размер одной доли.',
+  'В пропорции произведения крайних и средних членов равны. Можно также умножить оба члена одного отношения на одно число.',
+  'Лексическое значение слова определяется по контексту. Соседние слова помогают понять смысл и подобрать близкое или противоположное по значению слово.',
+  'Чтобы подобрать английское слово, прочитай всё предложение и определи, какое значение должно быть у пропуска.'
+];
+const lessonFormats = ['Дробь или процент без единиц.', 'Введи число без единиц.', 'Введи слово.', 'Введи одно слово по-английски.'];
+courses.flatMap(course => course.lessons).forEach((lesson, index) => {
+  const existing = lesson.tasks || [{...lesson, label:'Основная задача', theory:practiceTheory[index], format:lessonFormats[index]}];
+  lesson.tasks = existing.concat(practice[index].map(([task, answers, hint, explain, format], number) => ({
+    label:`Дополнительная задача ${number + 1}`, task, answers:answers.split('|'), hint, explain,
+    theory:practiceTheory[index], format:format || lessonFormats[index]
+  })));
+});
+const key = 'home-study-demo-v1';
+const app = document.querySelector('#app');
+const all = courses.flatMap((course, ci) => course.lessons.map((lesson, li) => ({...lesson, course, id:`${ci}-${li}`})));
+let state = {records:{}, active:null};
+try { state = JSON.parse(localStorage.getItem(key)) || state; } catch {}
+const save = () => localStorage.setItem(key, JSON.stringify(state));
+if (state.records['0-0'] && !state.records['0-0'].tasks) {
+  state.records['relations-demo'] = state.records['0-0'];
+  delete state.records['0-0'];
+  save();
+}
+for (const item of all) {
+  const record = state.records[item.id];
+  if (!record) continue;
+  if (!record.tasks) state.records[item.id] = {...record, tasks:[record], position:record.passed ? 1 : 0, errors:[...record.errors], passed:false};
+  else if (record.passed && record.tasks.length < item.tasks.length) {
+    record.position = record.tasks.length;
+    record.passed = false;
+  }
+}
+save();
+const escape = value => String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+function celebrate(button){
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.querySelector('.confetti')?.remove();
+  const burst = document.createElement('div');
+  burst.className = 'confetti';
+  burst.setAttribute('aria-hidden', 'true');
+  const bounds = button.getBoundingClientRect();
+  const colors = ['#603ac8','#f19228','#20a985','#e4578e'];
+  for (let index = 0; index < 20; index++) {
+    const piece = document.createElement('i');
+    const angle = index * Math.PI / 10;
+    const distance = 52 + (index % 5) * 19;
+    piece.style.left = bounds.left + bounds.width / 2 + 'px';
+    piece.style.top = bounds.top + bounds.height / 2 + 'px';
+    piece.style.backgroundColor = colors[index % colors.length];
+    piece.style.setProperty('--x', Math.cos(angle) * distance + 'px');
+    piece.style.setProperty('--y', Math.sin(angle) * distance + 'px');
+    piece.style.setProperty('--spin', (index % 2 ? -1 : 1) * 260 + 'deg');
+    burst.append(piece);
+  }
+  document.body.append(burst);
+  setTimeout(() => burst.remove(), 700);
+}
+function addProgress(container, id, label, value, total){
+  const progress = document.createElement('div');
+  progress.className = 'study-progress';
+  progress.innerHTML = `<label for="${id}">${label} · ${value} из ${total}</label><progress id="${id}" value="${value}" max="${total}"></progress>`;
+  container.after(progress);
+}
+function home(){
+  const next = all.find(item => item.id === state.active && !state.records[item.id]?.passed) || all.find(item => !state.records[item.id]?.passed);
+  const repeat = all.filter(item => state.records[item.id]?.errors.length && !state.records[item.id]?.passed);
+  app.innerHTML = `<section class="hero"><strong>6 класс · Семейное обучение</strong><h1>Мой учебный день</h1><p>${all.filter(item => state.records[item.id]?.passed).length} из ${all.length} уроков пройдено</p>${next ? `<button class="primary" data-lesson="${next.id}">${next.id === state.active ? 'Продолжить урок' : 'Следующий урок'}</button>` : 'Все уроки прототипа пройдены.'}</section><h2>Предметы</h2><div class="grid">${courses.map(course => `<section class="card"><span class="icon" aria-hidden="true">${course.icon}</span><h3>${course.name}</h3><p class="muted">${course.section}</p>${all.filter(item => item.course === course).map(item => `<button class="row" data-lesson="${item.id}">${item.title}</button>`).join('')}</section>`).join('')}</div>${repeat.length ? `<article><h2>Стоит повторить</h2>${repeat.map(item => `<button data-lesson="${item.id}">${item.title}</button>`).join(' ')}</article>` : ''}`;
+  app.querySelector('.hero p').remove();
+  app.querySelectorAll('.grid .card').forEach((card, index) => {
+    const lessons = all.filter(item => item.course === courses[index]);
+    const total = lessons.reduce((count, item) => count + item.tasks.length, 0);
+    const solved = lessons.reduce((count, item) =>
+      count + (state.records[item.id]?.tasks?.filter(attempt => attempt?.passed).length || 0), 0);
+    addProgress(card.querySelector('p'), `subject-progress-${index}`, 'Решено задач', solved, total);
+  });
+}
+function attachHintDialog(theory, firstStep, record, lesson = record){
+  const dialog = document.createElement('dialog');
+  dialog.setAttribute('aria-labelledby', 'theory-title');
+  dialog.innerHTML = '<h2 id="theory-title">Подсказка из теории</h2><p></p><p></p><form method="dialog"><button autofocus>Вернуться к задаче</button></form>';
+  const [rule, step] = dialog.querySelectorAll('p');
+  rule.textContent = theory;
+  step.textContent = firstStep;
+  app.querySelector('#tip').replaceWith(dialog);
+  app.querySelector('#hint').onclick = () => {
+    record.hint = lesson.hint = true;
+    save();
+    dialog.showModal();
+  };
+}
+function openTaskLesson(item, index){
+  const lesson = state.records[item.id] ||= {tasks:[], position:0, errors:[], passed:false, hint:false};
+  const position = index ?? lesson.position;
+  const task = item.tasks[position];
+  const answerFormats = [
+    'Доля без единиц измерения. Можно ввести дробь (1/3), десятичную дробь (0,25) или процент (25%).',
+    'Доля без единиц измерения. Введи дробь (1/3) или процент, округлённый до десятых (33,3%).',
+    'Число без единиц измерения. Слова «раза» вводить не нужно. Пример записи: 2,5.',
+    'Доля без единиц измерения. Можно ввести дробь (1/8), десятичную дробь (0,125) или процент (12,5%).',
+    'Два целых числа через пробел, без слов: сначала число девочек, затем число мальчиков. Пример записи: 15 20.'
+  ];
+  const attempt = lesson.tasks[position] ||= {draft:'', errors:[], hint:false, passed:false, feedback:''};
+  lesson.position = position;
+  state.active = item.id;
+  save();
+  app.innerHTML = `<button id="back">← К предметам</button><article><small>Математика · 6 класс</small><h1>Отношения</h1><p>Прочитай объяснение на с. 119–120. Попробуй решить задачу, затем сравни ход решения.</p><small>${task.label} · ${position + 1} из ${item.tasks.length}</small><form><label for="answer">${task.task}</label><input id="answer" autocomplete="off" required value="${escape(attempt.draft)}"><div class="row"><button class="primary">Проверить</button><button type="button" id="hint">Подсказка</button></div></form><p id="tip" ${attempt.hint ? '' : 'hidden'}>${task.hint}</p><p id="feedback" role="status">${escape(attempt.feedback)}</p><div class="row">${position > 0 ? '<button id="previous">Предыдущая задача</button>' : ''}<button id="continue" ${attempt.passed ? '' : 'hidden'}>${position + 1 < item.tasks.length ? 'Следующая задача' : 'Следующий урок'}</button></div></article>`;
+  app.querySelector('article > small').textContent = item.course.name + ' · 6 класс';
+  app.querySelector('article > h1').textContent = item.title;
+  const reading = app.querySelector('article > p');
+  if (item.example) {
+    reading.textContent = 'Прочитай в учебнике страницы ' + item.pages + '.';
+    const example = document.createElement('p');
+    example.className = 'panel';
+    example.textContent = 'Разобранный пример: ' + item.example;
+    reading.after(example);
+  }
+  app.querySelector('#back').onclick = home;
+  const answerField = app.querySelector('#answer');
+  const showTaskProgress = () => {
+    app.querySelector('#task-progress')?.parentElement.remove();
+    addProgress(app.querySelector('article > p'), 'task-progress', 'Решено задач', lesson.tasks.filter(task => task?.passed).length, item.tasks.length);
+  };
+  showTaskProgress();
+  const format = document.createElement('small');
+  format.id = 'answer-format';
+  format.textContent = task.format || answerFormats[position];
+  answerField.before(format);
+  answerField.setAttribute('aria-describedby', format.id);
+  const prior = app.querySelector('#previous');
+  const theory = [
+    'Отношение двух чисел — это частное от их деления. Чтобы узнать, какую часть одно число составляет от другого, раздели первое на второе.',
+    'Отношение величин в одинаковых единицах измерения равно отношению их числовых значений. У отношения имеет значение порядок: «часть от целого» означает «часть ÷ целое».',
+    'Чтобы узнать, во сколько раз одна величина больше другой, раздели большую величину на меньшую. Если поменять их местами, получится обратное отношение.',
+    'Если величины выражены в разных единицах, сначала приведи их к одной единице. В одном килограмме 1000 граммов.',
+    'Чтобы разделить общее количество в заданном отношении, сначала сложи числа отношения. Раздели общее количество на эту сумму, чтобы найти одну долю, и умножь её на каждое число отношения.'
+  ];
+  attachHintDialog(task.theory || theory[position], task.hint, attempt, lesson);
+  if (prior) prior.onclick = () => openTaskLesson(item, position - 1);
+  app.querySelector('#continue').onclick = () => {
+    if (position + 1 < item.tasks.length) openTaskLesson(item, position + 1);
+    else {
+      const next = all.slice(all.indexOf(item) + 1).find(entry => !state.records[entry.id]?.passed);
+      if (next) openLesson(next.id); else home();
+    }
+  };
+  app.querySelector('#answer').oninput = event => { attempt.draft = event.target.value; save(); };
+  app.querySelector('form').onsubmit = event => {
+    event.preventDefault();
+    const answer = attempt.draft.trim().toLowerCase().replace(/,/g,'.').replace(/\s+/g,' ').replace(/\s*([:;/%])\s*/g,'$1');
+    if (!answer) return;
+    if (task.answers.includes(answer)) {
+      celebrate(event.currentTarget.querySelector('.primary'));
+      attempt.passed = true;
+      attempt.feedback = 'Верно! ' + task.explain;
+    } else {
+      attempt.errors.push(attempt.draft);
+      lesson.errors.push(task.label + ' — ' + attempt.draft);
+      attempt.feedback = 'Ответ пока не совпал. ' + task.explain + ' Попробуй ещё раз.';
+    }
+    lesson.passed = item.tasks.every((_, taskIndex) => lesson.tasks[taskIndex]?.passed);
+    save();
+    showTaskProgress();
+    app.querySelector('#feedback').textContent = attempt.feedback;
+    app.querySelector('#continue').hidden = !attempt.passed;
+  };
+}
+function openLesson(id){
+  const item = all.find(entry => entry.id === id);
+  if (!item) return;
+  if (item.tasks) return openTaskLesson(item);
+  const record = state.records[id] ||= {draft:'', errors:[], hint:false, passed:false, feedback:''};
+  state.active = id;
+  save();
+  app.innerHTML = `<button id="back">← К предметам</button><article><small>${item.course.name} · 6 класс</small><h1>${item.title}</h1><p>Прочитай в учебнике страницы <strong>${item.pages}</strong>.</p><div class="panel"><h3>Разобранный пример</h3>${item.example}</div><form><label for="answer">${item.task}</label><input id="answer" autocomplete="off" required value="${escape(record.draft)}"><div class="row"><button class="primary">Проверить</button><button type="button" id="hint">Подсказка</button></div></form><p id="tip" ${record.hint ? '' : 'hidden'}>${item.hint}</p><p id="feedback" role="status">${escape(record.feedback)}</p><div id="next" ${record.passed ? '' : 'hidden'}><button class="primary" id="continue">Следующий урок</button></div></article>`;
+  app.querySelector('#back').onclick = home;
+  app.querySelector('#continue').onclick = () => {
+    const next = all.slice(all.indexOf(item) + 1).find(entry => !state.records[entry.id]?.passed);
+    if (next) openLesson(next.id); else home();
+  };
+  app.querySelector('#answer').oninput = event => { record.draft = event.target.value; save(); };
+  const theory = {
+    '0-1':'Пропорция — это равенство двух отношений. Если второй член отношения увеличивается в несколько раз при сохранении отношения, первый увеличивается во столько же раз.',
+    '1-0':'Лексическое значение — это то, что обозначает слово. Если у слова несколько значений, подходящее подсказывают соседние слова.',
+    '2-0':'После before you в этом предложении нужен глагол, который называет действие. Подбери глагол по смыслу всего предложения.'
+  };
+  attachHintDialog(theory[id], item.hint, record);
+  app.querySelector('form').onsubmit = event => {
+    event.preventDefault();
+    const answer = record.draft.toLowerCase().replace(/\s+/g,'').trim();
+    if (!answer) return;
+    const correct = item.answers.includes(answer);
+    if (correct) {
+      celebrate(event.currentTarget.querySelector('.primary'));
+      record.passed = true;
+    } else record.errors.push(record.draft);
+    record.feedback = correct ? 'Верно! Урок пройден.' : `${item.explain} Попробуй ещё раз.`;
+    save();
+    app.querySelector('#feedback').textContent = record.feedback;
+    app.querySelector('#next').hidden = !record.passed;
+  };
+}
+function parent(){
+  const history = all.filter(item => state.records[item.id]);
+  app.innerHTML = `<section class="hero"><small>6 класс · Семейное обучение</small><h1>Кабинет родителя</h1><p>История занятий на этом устройстве</p></section><h2>Результаты уроков</h2>${history.map(item => {const record = state.records[item.id]; return `<article><h3>${item.title}</h3><p>${record.passed ? 'Урок пройден' : 'Урок начат'} · Подсказка ${record.hint ? 'использована' : 'не использована'}</p><p>Ошибки: ${record.errors.map(escape).join(', ') || 'пока нет'}</p></article>`;}).join('') || '<p>Здесь появятся начатые уроки.</p>'}<article><h2>Демо-заявки</h2><p>Подбор дополнительных заданий · 0 ₽ · Новая</p><p>Пробное занятие · 750 ₽ · Рассмотрена</p><small>Пример данных для прототипа</small></article>`;
+}
+document.querySelector('#student').onclick = home;
+document.querySelector('#parent').onclick = parent;
+app.addEventListener('click',event => { const button = event.target.closest('[data-lesson]'); if (button) openLesson(button.dataset.lesson); });
+home();
+</script></html>
