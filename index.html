@@ -369,6 +369,7 @@ const cloudUrl = 'https://direvigtacfzwnwosaan.supabase.co';
 const publicKey = 'sb_publishable_0DJUVHDUQ4WLDNcKu4C3DA_vl-9WfwW';
 const cloudSessionKey = key + '-account-session';
 const cloudOwnerKey = key + '-account-owner';
+const confirmationRedirect = 'https://dudnikkurator-hue.github.io/uchus-doma-demo/';
 let cloudSession = null;
 try { cloudSession = JSON.parse(sessionStorage.getItem(cloudSessionKey)); } catch {}
 const syncStatus = document.createElement('p');
@@ -379,6 +380,27 @@ account.append(syncStatus);
 document.querySelector('header').after(account);
 const accountForm = account.querySelector('form');
 const signOut = account.querySelector('button[type=button]');
+const resend = document.createElement('button');
+resend.type = 'button';
+resend.textContent = 'Отправить письмо повторно';
+accountForm.querySelector('.row').append(resend);
+resend.onclick = async () => {
+  const email = accountForm.elements.email;
+  if (!email.reportValidity()) return;
+  resend.disabled = true;
+  try {
+    await cloudRequest('/auth/v1/resend?redirect_to=' + encodeURIComponent(confirmationRedirect), {
+      method:'POST', body:{type:'signup',email:email.value.trim()}
+    });
+    syncStatus.textContent = 'Запрос отправлен. Проверьте почту и откройте самое новое письмо.';
+  } catch (error) {
+    syncStatus.textContent = error.status === 429
+      ? 'Слишком много запросов. Попробуйте позже.'
+      : 'Не удалось повторно отправить письмо. Проверьте адрес или попробуйте войти.';
+  } finally {
+    resend.disabled = false;
+  }
+};
 function setCloudSession(session) {
   if(session) sessionStorage.setItem(cloudSessionKey, JSON.stringify(session));
   else sessionStorage.removeItem(cloudSessionKey);
@@ -477,8 +499,7 @@ accountForm.onsubmit = async event => {
   const buttons = [...accountForm.querySelectorAll('button')];
   buttons.forEach(button => button.disabled = true);
   try {
-    const redirect = 'https://dudnikkurator-hue.github.io/uchus-doma-demo/';
-    const result = await cloudRequest(signup ? '/auth/v1/signup?redirect_to=' + encodeURIComponent(redirect) : '/auth/v1/token?grant_type=password',{method:'POST',body});
+    const result = await cloudRequest(signup ? '/auth/v1/signup?redirect_to=' + encodeURIComponent(confirmationRedirect) : '/auth/v1/token?grant_type=password',{method:'POST',body});
     accountForm.reset();
     if (!result?.access_token) {
       syncStatus.textContent = 'Проверьте почту. Подтвердите адрес, затем войдите в аккаунт.';
