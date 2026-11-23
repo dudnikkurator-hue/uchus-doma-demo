@@ -89,6 +89,22 @@ courses[0].lessons.push({
     {task:'Для круговой диаграммы используй данные о 20 учениках: 10 идут пешком, 6 едут на автобусе и 4 едут на велосипеде. Какие углы будут у трёх секторов?', answers:['180 108 72','180;108;72'], format:'Введи три угла в градусах через пробел, без знака °: пешком, автобус, велосипед.', hint:'На одного ученика приходится 360° ÷ 20. Умножь этот угол на число учеников в каждой группе.', explain:'360° ÷ 20 = 18°. Углы равны 10 × 18° = 180°, 6 × 18° = 108° и 4 × 18° = 72°. Их сумма равна 360°.'}
   ].map((task, index) => ({...task, theory:diagramTheory, label:`Задача ${index + 1}`}))
 });
+const compositionTheory = 'Материалы к сочинению собирают с учётом темы. Записывай конкретные наблюдения, отбирай нужные подробности и группируй их перед написанием текста.';
+courses[1].lessons.push({
+  title:'Собирание материалов к сочинению',
+  pages:'109–110',
+  example:'Для сочинения об осеннем дворе можно отдельно записать, что видно (жёлтые листья), что слышно (шорох под ногами) и какое впечатление создаёт эта картина.',
+  tasks:[
+    {task:'Какое наблюдение пригодится для сочинения «Осенний двор»? 1) Под берёзой лежат жёлтые листья. 2) В библиотеке выдали новую книгу. 3) Поезд прибыл в семь часов.', answer:'1', hint:'Ищи запись, в которой есть признак осени и деталь двора.', explain:'Подходит первая запись: берёза и опавшие жёлтые листья помогают описать осенний двор.'},
+    {task:'Какая запись передаёт конкретное наблюдение? 1) Было очень красиво. 2) На мокрой скамейке блестели капли. 3) Мне всё понравилось.', answer:'2', hint:'Ищи то, что можно представить по описанию.', explain:'Во второй записи названы предмет и видимая деталь: скамейка и капли.'},
+    {task:'Какую запись нужно поместить в группу «Звуки»? 1) Красные ягоды рябины. 2) Запах мокрой земли. 3) Шорох листьев под ногами.', answer:'3', hint:'Что из перечисленного можно услышать?', explain:'Шорох листьев воспринимается на слух. Первая запись описывает цвет, вторая — запах.'},
+    {task:'Для сочинения «Первый снег» записали три наблюдения. Какая запись лишняя? 1) Снежинки таяли на варежке. 2) На столе лежал учебник математики. 3) Крыши покрылись тонким белым слоем.', answer:'2', hint:'Проверь, помогает ли каждая запись описать первый снег.', explain:'Учебник на столе не помогает описать снег. Две другие записи подходят к теме.'},
+    {task:'Как подготовить материалы к сочинению? Выбери порядок. 1) Определить тему → записать наблюдения → отобрать и сгруппировать детали. 2) Сгруппировать детали → выбрать тему → начать наблюдать. 3) Написать вывод → собрать наблюдения → выбрать тему.', answer:'1', hint:'Сначала нужно понять, о чём будет сочинение.', explain:'Тема задаёт направление наблюдения. После сбора записей их можно отобрать и сгруппировать.'}
+  ].map(({answer, ...task}, index) => ({
+    ...task, label:`Задача ${index + 1}`, answers:[answer],
+    format:'Введи номер варианта.', theory:compositionTheory
+  }))
+});
 const key = 'home-study-demo-v1';
 const app = document.querySelector('#app');
 const all = courses.flatMap((course, ci) => course.lessons.map((lesson, li) => ({...lesson, course, id:`${ci}-${li}`})));
@@ -140,11 +156,70 @@ function addProgress(container, id, label, value, total){
   progress.innerHTML = `<label for="${id}">${label} · ${value} из ${total}</label><progress id="${id}" value="${value}" max="${total}"></progress>`;
   container.after(progress);
 }
+function addProgressBackup(){
+  const panel = document.createElement('article');
+  panel.innerHTML = '<h2>Резервная копия прогресса</h2><div class="row"><button type="button">Скачать прогресс</button><label>Загрузить прогресс<input type="file" accept=".json,application/json"></label></div><p role="status"></p>';
+  const status = panel.querySelector('[role=status]');
+  panel.querySelector('button').onclick = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify({version:1, state})], {type:'application/json'}));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'uchus-doma-progress.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  panel.querySelector('input').onchange = async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+      const backup = JSON.parse(await file.text());
+      if (backup.version !== 1 || !backup.state?.records || typeof backup.state.records !== 'object') throw Error();
+      const records = {...state.records};
+      for (const lesson of all) {
+        const incoming = backup.state.records[lesson.id];
+        if (!incoming) continue;
+        if (!Array.isArray(incoming.tasks)) throw Error();
+        const current = records[lesson.id];
+        const tasks = Array.from({length:lesson.tasks.length}, (_, index) => {
+          const saved = incoming.tasks[index];
+          const local = current?.tasks[index];
+          if (!saved) return local || null;
+          if (typeof saved !== 'object' || typeof saved.draft !== 'string' || typeof saved.passed !== 'boolean' || typeof saved.hint !== 'boolean' || typeof saved.feedback !== 'string' || !Array.isArray(saved.errors) || saved.errors.some(error => typeof error !== 'string')) throw Error();
+          return {
+            ...(local?.draft ? local : saved),
+            passed: Boolean(local?.passed || saved.passed),
+            hint: Boolean(local?.hint || saved.hint),
+            errors: [...new Set([...(local?.errors || []), ...saved.errors])]
+          };
+        });
+        const position = tasks.findIndex(task => !task?.passed);
+        records[lesson.id] = {
+          tasks, position:position < 0 ? tasks.length - 1 : position, passed:position < 0,
+          hint:tasks.some(task => task?.hint),
+          errors:tasks.flatMap((task, index) => (task?.errors || []).map(error => lesson.tasks[index].label + ' — ' + error))
+        };
+      }
+      const active = state.active || all.find(lesson => lesson.id === backup.state.active)?.id || null;
+      const merged = {records, active};
+      localStorage.setItem(key, JSON.stringify(merged));
+      state = merged;
+      home();
+      app.querySelector('#backup-status').textContent = 'Прогресс загружен. Решённые задачи объединены.';
+    } catch {
+      status.textContent = 'Не удалось загрузить копию. Проверь файл и доступ к хранилищу браузера.';
+    } finally {
+      event.target.value = '';
+    }
+  };
+  status.id = 'backup-status';
+  app.append(panel);
+}
 function home(){
   const next = all.find(item => item.id === state.active && !state.records[item.id]?.passed) || all.find(item => !state.records[item.id]?.passed);
   const repeat = all.filter(item => state.records[item.id]?.errors.length && !state.records[item.id]?.passed);
   app.innerHTML = `<section class="hero"><strong>6 класс · Семейное обучение</strong><h1>Мой учебный день</h1><p>${all.filter(item => state.records[item.id]?.passed).length} из ${all.length} уроков пройдено</p>${next ? `<button class="primary" data-lesson="${next.id}">${next.id === state.active ? 'Продолжить урок' : 'Следующий урок'}</button>` : 'Все уроки прототипа пройдены.'}</section><h2>Предметы</h2><div class="grid">${courses.map(course => `<section class="card"><span class="icon" aria-hidden="true">${course.icon}</span><h3>${course.name}</h3><p class="muted">${course.section}</p>${all.filter(item => item.course === course).map(item => `<button class="row" data-lesson="${item.id}">${item.title}</button>`).join('')}</section>`).join('')}</div>${repeat.length ? `<article><h2>Стоит повторить</h2>${repeat.map(item => `<button data-lesson="${item.id}">${item.title}</button>`).join(' ')}</article>` : ''}`;
   app.querySelector('.hero p').remove();
+  addProgressBackup();
   app.querySelectorAll('.grid .card').forEach((card, index) => {
     const lessons = all.filter(item => item.course === courses[index]);
     const total = lessons.reduce((count, item) => count + item.tasks.length, 0);
