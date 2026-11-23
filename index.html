@@ -110,7 +110,11 @@ const app = document.querySelector('#app');
 const all = courses.flatMap((course, ci) => course.lessons.map((lesson, li) => ({...lesson, course, id:`${ci}-${li}`})));
 let state = {records:{}, active:null};
 try { state = JSON.parse(localStorage.getItem(key)) || state; } catch {}
-const save = () => localStorage.setItem(key, JSON.stringify(state));
+let cloudChanged = () => {};
+const save = () => {
+  localStorage.setItem(key, JSON.stringify(state));
+  cloudChanged();
+};
 if (state.records['0-0'] && !state.records['0-0'].tasks) {
   state.records['relations-demo'] = state.records['0-0'];
   delete state.records['0-0'];
@@ -203,6 +207,7 @@ function addProgressBackup(){
       const merged = {records, active};
       localStorage.setItem(key, JSON.stringify(merged));
       state = merged;
+      cloudChanged();
       home();
       app.querySelector('#backup-status').textContent = 'Прогресс загружен. Решённые задачи объединены.';
     } catch {
@@ -360,5 +365,140 @@ function parent(){
 document.querySelector('#student').onclick = home;
 document.querySelector('#parent').onclick = parent;
 app.addEventListener('click',event => { const button = event.target.closest('[data-lesson]'); if (button) openLesson(button.dataset.lesson); });
+const cloudUrl = 'https://direvigtacfzwnwosaan.supabase.co';
+const publicKey = 'sb_publishable_0DJUVHDUQ4WLDNcKu4C3DA_vl-9WfwW';
+const cloudSessionKey = key + '-account-session';
+const cloudOwnerKey = key + '-account-owner';
+let cloudSession = null;
+try { cloudSession = JSON.parse(sessionStorage.getItem(cloudSessionKey)); } catch {}
+const syncStatus = document.createElement('p');
+syncStatus.setAttribute('role','status');
+const account = document.createElement('details');
+account.innerHTML = '<summary>Аккаунт и синхронизация</summary><form><label>Электронная почта <input name="email" type="email" autocomplete="username" required></label><label>Пароль <input name="password" type="password" autocomplete="current-password" minlength="8" required></label><div class="row"><button value="login">Войти</button><button value="signup">Создать аккаунт</button></div></form><button type="button" hidden>Выйти</button>';
+account.append(syncStatus);
+document.querySelector('header').after(account);
+const accountForm = account.querySelector('form');
+const signOut = account.querySelector('button[type=button]');
+function setCloudSession(session) {
+  if(session) sessionStorage.setItem(cloudSessionKey, JSON.stringify(session));
+  else sessionStorage.removeItem(cloudSessionKey);
+  cloudSession = session;
+  accountForm.hidden = Boolean(session);
+  signOut.hidden = !session;
+}
+async function cloudRequest(path, {method='GET', body, token, prefer}={}) {
+  const headers = {apikey:publicKey,'Content-Type':'application/json'};
+  if (token) headers.Authorization = 'Bearer ' + token;
+  if (prefer) headers.Prefer = prefer;
+  const response = await fetch(cloudUrl + path, {method, headers, body:body === undefined ? undefined : JSON.stringify(body)});
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw Object.assign(Error('Supabase request failed'), {status:response.status});
+  return data;
+}
+function mergeCloudProgress(remote, local) {
+  const records = {...remote?.records};
+  for (const lesson of all) {
+    const earlier = records[lesson.id];
+    const current = local.records[lesson.id];
+    if (!current) continue;
+    const tasks = Array.from({length:lesson.tasks.length}, (_, i) => {
+      const a = earlier?.tasks?.[i];
+      const b = current.tasks?.[i];
+      if (!a || !b) return b || a || null;
+      return {...(b.draft ? b : a), passed:a.passed || b.passed, hint:a.hint || b.hint,
+        errors:[...new Set([...(a.errors || []),...(b.errors || [])])]};
+    });
+    const position = tasks.findIndex(task => !task?.passed);
+    records[lesson.id] = {tasks, position:position < 0 ? tasks.length - 1 : position,
+      passed:position < 0, hint:tasks.some(task => task?.hint),
+      errors:tasks.flatMap((task,i) => (task?.errors || []).map(error => lesson.tasks[i].label + ' — ' + error))};
+  }
+  return {records, active:local.active || remote?.active || null};
+}
+let syncTimer;
+let syncQueue = Promise.resolve();
+function syncProgress(restore=false) {
+  const requestedSession = cloudSession;
+  if (!requestedSession) return Promise.resolve();
+  syncQueue = syncQueue.catch(() => {}).then(async () => {
+    if (cloudSession?.user.id !== requestedSession.user.id) return;
+    const userId = cloudSession.user.id;
+    const owner = localStorage.getItem(cloudOwnerKey);
+    if (owner && owner !== userId) {
+      syncStatus.textContent = 'Этот браузер уже привязан к другому аккаунту. Для отдельного аккаунта используйте другой профиль браузера.';
+      setCloudSession(null);
+      return;
+    }
+    try {
+      if (cloudSession.expires_at <= Math.floor(Date.now()/1000) + 60) {
+        setCloudSession(await cloudRequest('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:{refresh_token:cloudSession.refresh_token}}));
+      }
+      localStorage.setItem(cloudOwnerKey,userId);
+      const token = cloudSession.access_token;
+      const filter = '/rest/v1/study_progress?user_id=eq.' + encodeURIComponent(userId);
+      for (let attempt=0;attempt<4;attempt++) {
+        const [row] = await cloudRequest(filter + '&select=progress,revision',{token});
+        if (cloudSession?.user.id !== userId) return;
+        const merged = mergeCloudProgress(row?.progress,state);
+        try {
+          const written = row
+            ? await cloudRequest(filter + '&revision=eq.' + row.revision,{token,method:'PATCH',prefer:'return=representation',body:{progress:merged,revision:row.revision+1}})
+            : await cloudRequest('/rest/v1/study_progress',{token,method:'POST',prefer:'return=representation',body:{user_id:userId,progress:merged}});
+          if (!written?.length) continue;
+          if (cloudSession?.user.id !== userId) return;
+          if (restore) {
+            state = mergeCloudProgress(merged,state);
+            localStorage.setItem(key,JSON.stringify(state));
+            home();
+          }
+          syncStatus.textContent = 'Прогресс сохранён в аккаунте.';
+          return;
+        } catch (error) {
+          if (error.status !== 409) throw error;
+        }
+      }
+      throw Error('Concurrent update');
+    } catch {
+      syncStatus.textContent = 'Прогресс сохранён в браузере. Синхронизация пока недоступна.';
+    }
+  });
+  return syncQueue;
+}
+cloudChanged = () => {
+  if (!cloudSession) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(syncProgress,350);
+};
+accountForm.onsubmit = async event => {
+  event.preventDefault();
+  const data = new FormData(accountForm);
+  const signup = event.submitter?.value === 'signup';
+  const body = {email:data.get('email').trim(),password:data.get('password')};
+  const buttons = [...accountForm.querySelectorAll('button')];
+  buttons.forEach(button => button.disabled = true);
+  try {
+    const redirect = 'https://dudnikkurator-hue.github.io/uchus-doma-demo/';
+    const result = await cloudRequest(signup ? '/auth/v1/signup?redirect_to=' + encodeURIComponent(redirect) : '/auth/v1/token?grant_type=password',{method:'POST',body});
+    accountForm.reset();
+    if (!result?.access_token) {
+      syncStatus.textContent = 'Проверьте почту. Подтвердите адрес, затем войдите в аккаунт.';
+      return;
+    }
+    setCloudSession(result);
+    await syncProgress(true);
+  } catch {
+    syncStatus.textContent = signup ? 'Не удалось создать аккаунт. Проверьте адрес и попробуйте снова.' : 'Не удалось войти. Проверьте пароль и подтверждение почты.';
+  } finally {
+    buttons.forEach(button => button.disabled = false);
+  }
+};
+signOut.onclick = async () => {
+  await syncProgress();
+  setCloudSession(null);
+  syncStatus.textContent = 'Вы вышли из аккаунта. На этом устройстве доступна локальная копия прогресса.';
+};
+window.addEventListener('online',() => syncProgress());
 home();
+setCloudSession(cloudSession);
+if (cloudSession) syncProgress(true);
 </script></html>
