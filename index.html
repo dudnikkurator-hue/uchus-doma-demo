@@ -313,6 +313,23 @@ courses[1].lessons.push({
     theory:'При выборе слова учитывай, кто будет читать текст, в какой ситуации слово употребляется и понадобится ли читателю пояснение.'
   }))
 });
+const dependenceHomework = courses[0].lessons.find(lesson => lesson.homework && lesson.pages === '135');
+dependenceHomework.reading = 'Повтори прямую и обратную пропорциональные зависимости и выполни задания.';
+dependenceHomework.tasks.push(...[
+  ["За 6 м ткани заплатили 840 рублей. Сколько стоят 9 м той же ткани?","1260","Найди стоимость одного метра.","840 ÷ 6 × 9 = 1260 рублей.","Введи число рублей."],
+  ["На 4 порции каши нужно 300 г крупы. Сколько граммов нужно на 10 таких порций?","750","Вычисли расход крупы на одну порцию.","300 ÷ 4 × 10 = 750 г.","Введи число граммов."],
+  ["В таблице пары (4; 10), (6; 15), (8; x) описывают прямую пропорциональность. Найди x.","20","Найди отношение второго числа к первому.","10 ÷ 4 = 2,5. Тогда x = 8 × 2,5 = 20.","Введи число."],
+  ["Велосипедист проезжает 36 км за 2 часа при постоянной скорости. За сколько минут он проедет 9 км?","30","Найди скорость, затем вычисли время и переведи его в минуты.","36 ÷ 2 = 18 км/ч. 9 ÷ 18 = 0,5 часа, или 30 минут.","Введи число минут."],
+  ["В первый день длина ростка была 5 см. Каждый день она увеличивалась на 2 см. Прямо ли пропорциональна длина номеру дня?","нет","Сравни длины в первый и второй дни. Удваивается ли длина?","Длины 5 и 7 см не относятся как 1 и 2, поэтому прямой пропорциональности нет.","Ответь «да» или «нет»."],
+  ["Восемь одинаковых насосов осушают резервуар за 15 часов. За сколько часов справятся шесть насосов?","20","Общий объём работы постоянен. Сравни число насосов и время.","8 × 15 = 120 насосо-часов. 120 ÷ 6 = 20 часов.","Введи число часов."],
+  ["Автомобиль проехал маршрут за 3 часа со скоростью 72 км/ч. Какой должна быть постоянная скорость, чтобы проехать его за 4 часа?","54","Сначала вычисли расстояние.","72 × 3 = 216 км. 216 ÷ 4 = 54 км/ч.","Введи скорость в км/ч, только число."],
+  ["В таблице для обратной пропорциональности записаны пары (2; 24), (4; 12) и (8; 8). Каким числом нужно заменить второе число в третьей паре?","6","Вычисли произведение в первой паре и сравни его с третьей.","2 × 24 = 48. Правильное значение в третьей паре равно 48 ÷ 8 = 6.","Введи число."],
+  ["Для одного и того же маршрута скорость уменьшили на 20 %. На сколько процентов увеличилось время в пути?","25|25%","Вырази новую скорость долей прежней. Какую долю прежнего времени составит новое?","Новая скорость равна 0,8 прежней. Время увеличилось в 1 ÷ 0,8 = 1,25 раза, то есть на 25 %.","Введи процент."],
+  ["Какой пример описывает обратную пропорциональность? 1) Объём воды и время заполнения при постоянном притоке. 2) Ширина прямоугольника и его длина при постоянной площади. 3) Стоимость и число одинаковых билетов.","2","Найди пару величин, произведение которых задано и не меняется.","Площадь прямоугольника равна произведению ширины и длины. При фиксированной площади увеличение ширины уменьшает длину во столько же раз.","Введи номер варианта."]
+].map(([task, answers, hint, explain, format], index) => ({
+  label:`Домашка · Задание ${index + 6}`, task, answers:answers.split('|'), hint, explain, format,
+  theory:'При прямой пропорциональности постоянно отношение величин, при обратной — их произведение.'
+})));
 const key = 'home-study-demo-v1';
 const app = document.querySelector('#app');
 const all = courses.flatMap((course, ci) => course.lessons
@@ -475,17 +492,31 @@ function home(){
     }
   });
 }
-function attachHintDialog(theory, firstStep, record, lesson = record){
+function attachHintDialog(theory, firstStep, record, lesson = record, answerFormat = ''){
   const dialog = document.createElement('dialog');
   dialog.setAttribute('aria-labelledby', 'theory-title');
   dialog.innerHTML = '<h2 id="theory-title">Подсказка из теории</h2><p></p><p></p><form method="dialog"><button autofocus>Вернуться к задаче</button></form>';
+  const title = dialog.querySelector('h2');
   const [rule, step] = dialog.querySelectorAll('p');
   rule.textContent = theory;
-  step.textContent = firstStep;
   app.querySelector('#tip').replaceWith(dialog);
-  app.querySelector('#hint').onclick = () => {
+  const hint = app.querySelector('#hint');
+  const explain = document.createElement('button');
+  explain.type = 'button';
+  explain.textContent = 'Не поняла задание';
+  hint.after(explain);
+  hint.onclick = () => {
+    title.textContent = 'Подсказка из теории';
+    step.textContent = firstStep;
+    step.hidden = false;
     record.hint = lesson.hint = true;
     save();
+    dialog.showModal();
+  };
+  explain.onclick = () => {
+    title.textContent = 'Разберём задание';
+    step.textContent = answerFormat;
+    step.hidden = !answerFormat;
     dialog.showModal();
   };
 }
@@ -539,7 +570,7 @@ function openTaskLesson(item, index){
     'Если величины выражены в разных единицах, сначала приведи их к одной единице. В одном килограмме 1000 граммов.',
     'Чтобы разделить общее количество в заданном отношении, сначала сложи числа отношения. Раздели общее количество на эту сумму, чтобы найти одну долю, и умножь её на каждое число отношения.'
   ];
-  attachHintDialog(task.theory || theory[position], task.hint, attempt, lesson);
+  attachHintDialog(task.theory || theory[position], task.hint, attempt, lesson, format.textContent);
   if (prior) prior.onclick = () => openTaskLesson(item, position - 1);
   app.querySelector('#continue').onclick = () => {
     if (position + 1 < item.tasks.length) openTaskLesson(item, position + 1);
