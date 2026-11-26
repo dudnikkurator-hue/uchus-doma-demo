@@ -682,10 +682,19 @@ async function cloudRequest(path, {method='GET', body, token, prefer}={}) {
   const headers = {apikey:publicKey,'Content-Type':'application/json'};
   if (token) headers.Authorization = 'Bearer ' + token;
   if (prefer) headers.Prefer = prefer;
-  const response = await fetch(cloudUrl + path, {method, headers, body:body === undefined ? undefined : JSON.stringify(body)});
-  const data = await response.json().catch(() => null);
-  if (!response.ok) throw Object.assign(Error('Supabase request failed'), {status:response.status, code:data?.error_code || data?.code});
-  return data;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(cloudUrl + path, {method, headers, signal:controller.signal, body:body === undefined ? undefined : JSON.stringify(body)});
+    const data = await response.json().catch(error => {
+      if (controller.signal.aborted) throw error;
+      return null;
+    });
+    if (!response.ok) throw Object.assign(Error('Supabase request failed'), {status:response.status, code:data?.error_code || data?.code});
+    return data;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 function mergeCloudProgress(remote, local) {
   const records = {...remote?.records};
@@ -761,6 +770,9 @@ cloudChanged = () => {
   clearTimeout(syncTimer);
   syncTimer = setTimeout(syncProgress,350);
 };
+accountForm.addEventListener('invalid', () => {
+  syncStatus.textContent = 'Проверьте адрес почты и пароль. Пароль должен содержать минимум 8 символов.';
+}, true);
 accountForm.onsubmit = async event => {
   event.preventDefault();
   const data = new FormData(accountForm);
@@ -768,6 +780,7 @@ accountForm.onsubmit = async event => {
   const body = {email:data.get('email').trim(),password:data.get('password')};
   const buttons = [...accountForm.querySelectorAll('button')];
   buttons.forEach(button => button.disabled = true);
+  syncStatus.textContent = signup ? 'Создаём аккаунт…' : 'Входим в аккаунт…';
   try {
     const result = await cloudRequest(signup ? '/auth/v1/signup?redirect_to=' + encodeURIComponent(confirmationRedirect) : '/auth/v1/token?grant_type=password',{method:'POST',body});
     accountForm.reset();
@@ -776,9 +789,11 @@ accountForm.onsubmit = async event => {
       return;
     }
     setCloudSession(result);
+    syncStatus.textContent = 'Вход выполнен. Загружаем прогресс…';
     await syncProgress(true);
   } catch {
-    if (!error.status) syncStatus.textContent = 'Браузер не смог связаться с сервером входа. Проверьте подключение и попробуйте снова.';
+    if (error.name === 'AbortError') syncStatus.textContent = 'Сервер входа не ответил за 12 секунд. Попробуйте ещё раз или проверьте другую сеть.';
+    else if (!error.status) syncStatus.textContent = 'Браузер не смог связаться с сервером входа. Проверьте подключение и попробуйте снова.';
     else if (error.code === 'email_not_confirmed') syncStatus.textContent = 'Подтвердите почту перед входом.';
     else if (error.code === 'invalid_credentials') syncStatus.textContent = 'Почта или пароль не подошли. Проверьте данные или сбросьте пароль.';
     else if (error.status === 429) syncStatus.textContent = 'Слишком много попыток. Попробуйте позже.';
