@@ -668,8 +668,12 @@ resend.onclick = async () => {
   }
 };
 function setCloudSession(session) {
-  if(session) sessionStorage.setItem(cloudSessionKey, JSON.stringify(session));
-  else sessionStorage.removeItem(cloudSessionKey);
+  try {
+    if(session) sessionStorage.setItem(cloudSessionKey, JSON.stringify(session));
+    else sessionStorage.removeItem(cloudSessionKey);
+  } catch {
+    // Keep the session usable in memory when browser storage is restricted.
+  }
   cloudSession = session;
   accountForm.hidden = Boolean(session);
   signOut.hidden = !session;
@@ -680,7 +684,7 @@ async function cloudRequest(path, {method='GET', body, token, prefer}={}) {
   if (prefer) headers.Prefer = prefer;
   const response = await fetch(cloudUrl + path, {method, headers, body:body === undefined ? undefined : JSON.stringify(body)});
   const data = await response.json().catch(() => null);
-  if (!response.ok) throw Object.assign(Error('Supabase request failed'), {status:response.status});
+  if (!response.ok) throw Object.assign(Error('Supabase request failed'), {status:response.status, code:data?.error_code || data?.code});
   return data;
 }
 function mergeCloudProgress(remote, local) {
@@ -774,7 +778,11 @@ accountForm.onsubmit = async event => {
     setCloudSession(result);
     await syncProgress(true);
   } catch {
-    syncStatus.textContent = signup ? 'Не удалось создать аккаунт. Проверьте адрес и попробуйте снова.' : 'Не удалось войти. Проверьте пароль и подтверждение почты.';
+    if (!error.status) syncStatus.textContent = 'Браузер не смог связаться с сервером входа. Проверьте подключение и попробуйте снова.';
+    else if (error.code === 'email_not_confirmed') syncStatus.textContent = 'Подтвердите почту перед входом.';
+    else if (error.code === 'invalid_credentials') syncStatus.textContent = 'Почта или пароль не подошли. Проверьте данные или сбросьте пароль.';
+    else if (error.status === 429) syncStatus.textContent = 'Слишком много попыток. Попробуйте позже.';
+    else syncStatus.textContent = signup ? 'Не удалось создать аккаунт. Попробуйте снова.' : 'Сервер не принял запрос на вход. Попробуйте снова.';
   } finally {
     buttons.forEach(button => button.disabled = false);
   }
